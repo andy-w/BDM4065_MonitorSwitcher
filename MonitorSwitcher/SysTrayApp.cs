@@ -97,7 +97,14 @@
 
                             if (name.Contains("USB#VID_046D&PID_C046"))
                             {
-                                msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
+                                if (serverThread == null)
+                                {
+                                    msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
+                                }
+                                else
+                                {
+                                    msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
+                                }
                             }
                         }
 

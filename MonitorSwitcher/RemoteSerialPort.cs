@@ -13,7 +13,7 @@ namespace MonitorSwitcher
 
         public RemoteSerialPort()
         {
-            this.client = new TcpClient();
+            this.client = new TcpClient() { ReceiveTimeout = 1000 };
         }
 
         public int SendMessage(byte[] msgData, out byte[] msgResponse)
@@ -27,9 +27,9 @@ namespace MonitorSwitcher
 
                 this.client.GetStream().Write(msgData, 0, msgData.Length);
 
-                Thread.Sleep(200);
+                Thread.Sleep(2000);
 
-                if (this.client.GetStream().DataAvailable)
+               //if (this.client.GetStream().DataAvailable)
                 {
                     byte[] recvBuffer = new byte[255];
 
@@ -50,12 +50,18 @@ namespace MonitorSwitcher
                         return 1;
                     }
                 }
-                else
+                /*else
                 {
                     msgResponse = null;
 
                     return 1;
-                }
+                }*/
+            }
+            catch
+            {
+                msgResponse = null;
+
+                return 1;
             }
             finally
             {
