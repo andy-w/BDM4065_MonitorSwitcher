@@ -11,6 +11,8 @@
 
     public class SysTrayApp : Form
     {
+        delegate int SendMessageMethod(byte[] msgData,out byte[] msgReport);
+
         private NotifyIcon trayIcon;
         private ContextMenu trayMenu;
         private TcpListener listener;
@@ -139,41 +141,64 @@
 
             byte[] buffer = new byte[250];
 
-            // SendMessageMethod sendMessageMethod = this.SendMessageThreadSafe;
+            SendMessageMethod sendMessageMethod = this.SendMessageThreadSafe;
 
             while (clientConnected)
             {
-                int noBytes = stream.Read(buffer, 0, buffer.Length);
-
-                if (noBytes > 0)
+                try
                 {
-                    byte[] msgData = new byte[noBytes];
+                    int noBytes = stream.Read(buffer, 0, buffer.Length);
 
-                    System.Buffer.BlockCopy(buffer, 0, msgData, 0, noBytes);
+                    if (noBytes > 0)
+                    {
+                        byte[] msgData = new byte[noBytes];
 
-                    byte[] msgReport;
+                        System.Buffer.BlockCopy(buffer, 0, msgData, 0, noBytes);
 
-                    int status = comPort.SendMessage(msgData,out msgReport);
+                        byte[] msgReport;
 
-                    buffer[0] = (byte)status;
+                        int status = comPort.SendMessage(msgData, out msgReport);
 
-                    System.Buffer.BlockCopy(msgReport, 0, buffer, 1, msgReport.Length);
+                        buffer[0] = (byte)status;
 
-                    stream.Write(buffer, 0, msgReport.Length+1);
+                        System.Buffer.BlockCopy(msgReport, 0, buffer, 1, msgReport.Length);
+
+                        stream.Write(buffer, 0, msgReport.Length + 1);
+                    }
+                    else
+                    {
+                        clientConnected = false;
+                    }
                 }
-                else
+                catch
                 {
                     clientConnected = false;
                 }
             }
         }
 
+        private int SendMessageThreadSafe(byte[] msgData, out byte[] msgReport)
+        {
+             return comPort.SendMessage(msgData, out msgReport);
+        }
+
         private void refreshTimer_Tick(object sender, EventArgs e)
         {
-            BDM4065Messages.InputSourceNumber currentSource = msg.GetCurrentSource();
+            try
+            {
+                BDM4065Messages.InputSourceNumber currentSource = msg.GetCurrentSource();
 
-            trayMenu.MenuItems["DP"].Checked = (currentSource == BDM4065Messages.InputSourceNumber.DP);
-            trayMenu.MenuItems["MiniDP"].Checked = (currentSource == BDM4065Messages.InputSourceNumber.miniDP);
+                trayMenu.MenuItems["DP"].Enabled = true;
+                trayMenu.MenuItems["MiniDP"].Enabled = true;
+
+                trayMenu.MenuItems["DP"].Checked = (currentSource == BDM4065Messages.InputSourceNumber.DP);
+                trayMenu.MenuItems["MiniDP"].Checked = (currentSource == BDM4065Messages.InputSourceNumber.miniDP);
+            }
+            catch
+            {
+                trayMenu.MenuItems["DP"].Enabled = false;
+                trayMenu.MenuItems["MiniDP"].Enabled = false;
+            }
         }
 
         protected override void OnLoad(EventArgs e)
