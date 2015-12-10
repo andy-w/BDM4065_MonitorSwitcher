@@ -30,7 +30,7 @@ namespace MonitorSwitcher
             CurrentSourceGet = 0xAD,
         }
 
-        private enum InputSourceType : byte
+        public enum InputSourceType : byte
         {
             Video = 0x01,
             SVideo = 0x02,
@@ -53,9 +53,43 @@ namespace MonitorSwitcher
             miniDP = 0x05,
         }
 
-        public BDM4065Messages( MessageTransport msgTransport)
+        public enum PowerState : byte
+        {
+            Off = 0x01,
+            On = 0x02,
+        }
+
+        public BDM4065Messages(MessageTransport msgTransport)
         {
             this.msgTransport = msgTransport;
+        }
+
+        public PowerState GetPowerState()
+        {
+            byte[] msgData = this.BuildMessage(new byte[] { 0x03, 
+                0x01, 
+                (byte)MessageSet.PowerStateGet, 
+                0x00});
+
+            byte[] msgResponse;
+
+            if (this.msgTransport.SendMessage(msgData, out msgResponse) == 0)
+            {
+                byte[] msgReport;
+
+                if (this.ProcessResponse(msgResponse, out msgReport) == 0)
+                {
+                    return (PowerState)msgReport[1];
+                }
+                else
+                {
+                    throw new Exception("Invalid response");
+                }
+            }
+            else
+            {
+                throw new Exception("Failed to send message");
+            }
         }
 
         public InputSourceNumber GetCurrentSource()
@@ -70,7 +104,7 @@ namespace MonitorSwitcher
 
                 if (this.ProcessResponse(msgResponse, out msgReport) == 0)
                 {
-                    return (InputSourceNumber)msgResponse[2];
+                    return (InputSourceNumber)msgReport[2];
                 }
                 else
                 {
@@ -79,7 +113,7 @@ namespace MonitorSwitcher
             }
             else
             {
-               throw new Exception("Failed to send message");
+                throw new Exception("Failed to send message");
             }
         }
 
@@ -124,6 +158,31 @@ namespace MonitorSwitcher
             }
 
             return hashValue;
+        }
+
+        internal void SetInputSource(InputSourceType sourceType, InputSourceNumber sourceNumber)
+        {
+            byte[] msgData = this.BuildMessage(new byte[] { 0x07, 0x01, (byte)MessageSet.InputSourceSet, (byte)sourceType, (byte)sourceNumber, 0x01, 0x00, 0x00 });
+
+            byte[] msgResponse;
+
+            if (this.msgTransport.SendMessage(msgData, out msgResponse) == 0)
+            {
+                byte[] msgReport;
+
+                if (this.ProcessResponse(msgResponse, out msgReport) == 0)
+                {
+                    return;
+                }
+                else
+                {
+                    throw new Exception("Invalid response");
+                }
+            }
+            else
+            {
+                throw new Exception("Failed to send message");
+            }
         }
     }
 }

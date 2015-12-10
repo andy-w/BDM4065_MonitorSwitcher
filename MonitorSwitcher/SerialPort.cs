@@ -8,11 +8,11 @@ using System.Threading;
 
 namespace MonitorSwitcher
 {
-    class BDM4065_SerialPort : MessageTransport
+    class LocalSerialPort : MessageTransport
     {
         private SerialPort comPort;
 
-        public BDM4065_SerialPort()
+        public LocalSerialPort()
         {
             this.comPort = new SerialPort("COM1")
             {
