@@ -8,6 +8,7 @@
     using System.Threading;
     using System.Net;
     using System.Runtime.InteropServices;
+    using System.Reflection;
 
     public class SysTrayApp : Form
     {
@@ -59,7 +60,7 @@
             // can of course use your own custom icon too.
             trayIcon = new NotifyIcon();
             trayIcon.Text = "MonitorSwitcher";
-            trayIcon.Icon = new Icon(SystemIcons.Application, 40, 40);
+            trayIcon.Icon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location); // new Icon(SystemIcons.Application, 40, 40);
 
             // Add menu to tray icon and show it.
             trayIcon.ContextMenu = trayMenu;
@@ -230,6 +231,11 @@
 
         private void OnExit(object sender, EventArgs e)
         {
+            if (this.listener != null)
+            {
+                this.listener.Stop();
+            }
+
             Application.Exit();
         }
 
