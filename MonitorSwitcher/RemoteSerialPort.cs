@@ -22,6 +22,8 @@ namespace MonitorSwitcher
             {
                 if (client.Connected == false)
                 {
+                    client = new TcpClient();
+
                     this.client.Connect("192.168.1.202", 11000);
                 }
 
@@ -60,6 +62,13 @@ namespace MonitorSwitcher
             catch
             {
                 msgResponse = null;
+
+                if (client.Connected)
+                {
+                    client.Close();
+
+                    client = new TcpClient();
+                }
 
                 return 1;
             }
