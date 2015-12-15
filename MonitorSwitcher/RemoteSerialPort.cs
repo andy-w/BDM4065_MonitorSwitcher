@@ -25,6 +25,8 @@ namespace MonitorSwitcher
                     client = new TcpClient();
 
                     this.client.Connect("192.168.1.202", 11000);
+
+                    this.client.ReceiveTimeout = 2000;
                 }
 
                 this.client.GetStream().Write(msgData, 0, msgData.Length);
