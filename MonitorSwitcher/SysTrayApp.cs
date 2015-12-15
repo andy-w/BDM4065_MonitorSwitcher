@@ -12,7 +12,7 @@
 
     public class SysTrayApp : Form
     {
-        delegate int SendMessageMethod(byte[] msgData,out byte[] msgReport);
+        delegate int SendMessageMethod(byte[] msgData, out byte[] msgReport);
 
         private NotifyIcon trayIcon;
         private ContextMenu trayMenu;
@@ -20,6 +20,7 @@
         private MessageTransport comPort;
         private BDM4065Messages msg;
         private Thread serverThread = null;
+        private bool serverRunning = false;
 
         private const int DBT_DEVTYP_DEVICEINTERFACE = 0x05;
 
@@ -120,9 +121,11 @@
 
             this.listener = new TcpListener(localAddr, 11000);
 
+            serverRunning = true;
+
             this.listener.Start();
 
-            while (true)
+            while (serverRunning)
             {
                 try
                 {
@@ -131,6 +134,10 @@
                     Thread t = new Thread(new ParameterizedThreadStart(HandleClient));
 
                     t.Start(client);
+                }
+                catch (ThreadInterruptedException)
+                {
+                    serverRunning = false;
                 }
                 catch (System.Net.Sockets.SocketException)
                 {
@@ -151,7 +158,7 @@
 
             SendMessageMethod sendMessageMethod = this.SendMessageThreadSafe;
 
-            while (clientConnected)
+            while (clientConnected && serverRunning)
             {
                 try
                 {
@@ -165,7 +172,9 @@
 
                         byte[] msgReport;
 
-                        int status = comPort.SendMessage(msgData, out msgReport);
+                        int status = sendMessageMethod(msgData, out msgReport);
+
+                        //int status = comPort.SendMessage(msgData, out msgReport);
 
                         buffer[0] = (byte)status;
 
@@ -187,7 +196,7 @@
 
         private int SendMessageThreadSafe(byte[] msgData, out byte[] msgReport)
         {
-             return comPort.SendMessage(msgData, out msgReport);
+            return comPort.SendMessage(msgData, out msgReport);
         }
 
         private void refreshTimer_Tick(object sender, EventArgs e)
@@ -234,6 +243,18 @@
             if (this.listener != null)
             {
                 this.listener.Stop();
+            }
+
+            if (serverRunning)
+            {
+                serverRunning = false;
+
+                serverThread.Interrupt();
+
+                if (!serverThread.Join(2000))
+                {
+                    serverThread.Abort();
+                }
             }
 
             Application.Exit();
