@@ -97,16 +97,23 @@
 
                             String name = new string(dbi.dbcc_name);
 
-                            if (name.Contains("USB#VID_046D&PID_C046"))
+                            try
                             {
-                                if (serverThread == null)
+                                if (name.Contains("USB#VID_046D&PID_C046"))
                                 {
-                                    msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
+                                    if (serverThread == null)
+                                    {
+                                        msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
+                                    }
+                                    else
+                                    {
+                                        msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
+                                    }
                                 }
-                                else
-                                {
-                                    msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
-                                }
+                            }
+                            catch
+                            {
+                                // Ignore
                             }
                         }
 
