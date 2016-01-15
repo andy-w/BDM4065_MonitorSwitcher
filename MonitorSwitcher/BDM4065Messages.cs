@@ -184,5 +184,30 @@ namespace MonitorSwitcher
                 throw new Exception("Failed to send message");
             }
         }
+
+        internal void SetPowerState(PowerState powerState)
+        {
+            byte[] msgData = this.BuildMessage(new byte[] { 0x04, 0x01, (byte)MessageSet.PowerStateSet, (byte)powerState, 0x00 });
+
+            byte[] msgResponse;
+
+            if (this.msgTransport.SendMessage(msgData, out msgResponse) == 0)
+            {
+                byte[] msgReport;
+
+                if (this.ProcessResponse(msgResponse, out msgReport) == 0)
+                {
+                    return;
+                }
+                else
+                {
+                    throw new Exception("Invalid response");
+                }
+            }
+            else
+            {
+                throw new Exception("Failed to send message");
+            }
+        }
     }
 }
