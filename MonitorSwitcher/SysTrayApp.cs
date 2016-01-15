@@ -54,6 +54,7 @@
 
             trayMenu.MenuItems.Add(new MenuItem("DP", OnInputSourceDP) { Name = "DP" });
             trayMenu.MenuItems.Add(new MenuItem("MiniDP", OnInputSourceMiniDP) { Name = "MiniDP" });
+            trayMenu.MenuItems.Add(new MenuItem("Off", OnOff));
             trayMenu.MenuItems.Add(new MenuItem("Exit", OnExit));
 
             // Create a tray icon. In this example we use a
@@ -243,6 +244,11 @@
         private void OnInputSourceMiniDP(object sender, EventArgs e)
         {
             msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
+        }
+
+        private void OnOff(object sender, EventArgs e)
+        {
+            msg.SetPowerState(BDM4065Messages.PowerState.Off);
         }
 
         private void OnExit(object sender, EventArgs e)
