@@ -34,7 +34,7 @@ namespace MonitorSwitcher
                 this.comPort.Write(msgData, 0, msgData.Length);
 
                 Thread.Sleep(200);
-
+                
                 if (this.comPort.BytesToRead > 0)
                 {
                     msgResponse = new byte[this.comPort.BytesToRead];
@@ -49,6 +49,12 @@ namespace MonitorSwitcher
 
                     return 1;
                 }
+            }
+            catch
+            {
+                msgResponse = null;
+
+                return 2;
             }
             finally
             {

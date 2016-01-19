@@ -191,7 +191,9 @@ namespace MonitorSwitcher
 
             byte[] msgResponse;
 
-            if (this.msgTransport.SendMessage(msgData, out msgResponse) == 0)
+            int ret = this.msgTransport.SendMessage(msgData, out msgResponse);
+            
+            if (ret == 0)
             {
                 byte[] msgReport;
 
@@ -206,7 +208,10 @@ namespace MonitorSwitcher
             }
             else
             {
-                throw new Exception("Failed to send message");
+                if (powerState == PowerState.On)
+                {
+                    throw new Exception("Failed to send message");
+                }
             }
         }
     }
