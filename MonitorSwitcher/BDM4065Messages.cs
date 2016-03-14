@@ -192,7 +192,7 @@ namespace MonitorSwitcher
             byte[] msgResponse;
 
             int ret = this.msgTransport.SendMessage(msgData, out msgResponse);
-            
+
             if (ret == 0)
             {
                 byte[] msgReport;
@@ -212,6 +212,60 @@ namespace MonitorSwitcher
                 {
                     throw new Exception("Failed to send message");
                 }
+            }
+        }
+
+        internal int GetVolume()
+        {
+            byte[] msgData = this.BuildMessage(new byte[] { 0x03, 0x01, (byte)MessageSet.VolumeGet, 0x00 });
+
+            byte[] msgResponse;
+
+            int ret = this.msgTransport.SendMessage(msgData, out msgResponse);
+
+            if (ret == 0)
+            {
+                byte[] msgReport;
+
+                if (this.ProcessResponse(msgResponse, out msgReport) == 0)
+                {
+                    return msgReport[1];
+                }
+                else
+                {
+                    throw new Exception("Invalid response");
+                }
+            }
+            else
+            {
+                throw new Exception("Failed to send message");
+            }
+        }
+
+        internal void SetVolume(byte volume)
+        {
+            byte[] msgData = this.BuildMessage(new byte[] { 0x04, 0x01, (byte)MessageSet.VolumeSet, volume, 0x00 });
+
+            byte[] msgResponse;
+
+            int ret = this.msgTransport.SendMessage(msgData, out msgResponse);
+
+            if (ret == 0)
+            {
+                byte[] msgReport;
+
+                if (this.ProcessResponse(msgResponse, out msgReport) == 0)
+                {
+                    return;
+                }
+                else
+                {
+                    throw new Exception("Invalid response");
+                }
+            }
+            else
+            {
+                throw new Exception("Failed to send message");
             }
         }
     }

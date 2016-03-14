@@ -54,7 +54,8 @@
 
             trayMenu.MenuItems.Add(new MenuItem("DP", OnInputSourceDP) { Name = "DP" });
             trayMenu.MenuItems.Add(new MenuItem("MiniDP", OnInputSourceMiniDP) { Name = "MiniDP" });
-            trayMenu.MenuItems.Add(new MenuItem("Off", OnOff));
+            trayMenu.MenuItems.Add(new MenuItem("Volume Up", OnVolumeUp));
+            trayMenu.MenuItems.Add(new MenuItem("Volume Down", OnVolumeDown));
             trayMenu.MenuItems.Add(new MenuItem("Exit", OnExit));
 
             // Create a tray icon. In this example we use a
@@ -76,6 +77,38 @@
             }
 
             refreshTimer.Start();
+        }
+
+        private void OnVolumeDown(object sender, EventArgs e)
+        {
+            int volume = msg.GetVolume();
+
+            if (volume < 5)
+            {
+                volume = 0;
+            }
+            else
+            {
+                volume = volume - 5;
+            }
+
+            msg.SetVolume((byte)volume);
+        }
+
+        private void OnVolumeUp(object sender, EventArgs e)
+        {
+            int volume = msg.GetVolume();
+
+            if (volume<95)
+            {
+                volume =100;
+            }
+            else
+            {
+                volume = volume + 5;
+            }
+           
+            msg.SetVolume((byte)volume);
         }
 
         protected override void WndProc(ref Message m)
