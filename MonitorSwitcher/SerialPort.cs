@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO.Ports;
-using System.Threading;
-
-namespace MonitorSwitcher
+﻿namespace MonitorSwitcher
 {
-    class LocalSerialPort : MessageTransport
+    using System.IO.Ports;
+    using System.Threading;
+
+    public class LocalSerialPort : IMessageTransport
     {
         private SerialPort comPort;
 
@@ -34,7 +29,7 @@ namespace MonitorSwitcher
                 this.comPort.Write(msgData, 0, msgData.Length);
 
                 Thread.Sleep(200);
-                
+
                 if (this.comPort.BytesToRead > 0)
                 {
                     msgResponse = new byte[this.comPort.BytesToRead];

@@ -2,114 +2,82 @@
 {
     using System;
     using System.Drawing;
-    using System.Windows.Forms;
-    using System.Net.Sockets;
-    using System.IO.Ports;
-    using System.Threading;
     using System.Net;
-    using System.Runtime.InteropServices;
+    using System.Net.Sockets;
     using System.Reflection;
+    using System.Runtime.InteropServices;
+    using System.Threading;
+    using System.Windows.Forms;
 
     public class SysTrayApp : Form
     {
-        delegate int SendMessageMethod(byte[] msgData, out byte[] msgReport);
-
+        private const int DBT_DEVTYP_DEVICEINTERFACE = 0x05;
         private NotifyIcon trayIcon;
+
         private ContextMenu trayMenu;
         private TcpListener listener;
-        private MessageTransport comPort;
+        private IMessageTransport comPort;
         private BDM4065Messages msg;
         private Thread serverThread = null;
         private bool serverRunning = false;
-
-        private const int DBT_DEVTYP_DEVICEINTERFACE = 0x05;
 
         public SysTrayApp()
         {
             try
             {
-                comPort = new LocalSerialPort();
+                this.comPort = new LocalSerialPort();
 
-                msg = new BDM4065Messages(comPort);
+                this.msg = new BDM4065Messages(this.comPort);
 
-                msg.GetPowerState();
+                this.msg.GetPowerState();
 
-                serverThread = new Thread(new ThreadStart(StartServer));
+                this.serverThread = new Thread(new ThreadStart(this.StartServer));
             }
             catch (Exception)
             {
-               AutoClosingMessageBox.Show("Unable to communicate with monitor", "", 2000);
+                AutoClosingMessageBox.Show("Unable to communicate with monitor, using remote connection", string.Empty, 2000);
 
-                comPort = new RemoteSerialPort();
+                this.comPort = new RemoteSerialPort();
 
-                msg = new BDM4065Messages(comPort);
+                this.msg = new BDM4065Messages(this.comPort);
             }
 
             System.Windows.Forms.Timer refreshTimer = new System.Windows.Forms.Timer();
             refreshTimer.Interval = 10000;
-            refreshTimer.Tick += refreshTimer_Tick;
+            refreshTimer.Tick += this.RefreshTimer_Tick;
 
             // Create a simple tray menu with only one item.
-            trayMenu = new ContextMenu();
+            this.trayMenu = new ContextMenu();
 
-            trayMenu.MenuItems.Add(new MenuItem("DP", OnInputSourceDP) { Name = "DP" });
-            trayMenu.MenuItems.Add(new MenuItem("MiniDP", OnInputSourceMiniDP) { Name = "MiniDP" });
-            trayMenu.MenuItems.Add(new MenuItem("Volume Up", OnVolumeUp));
-            trayMenu.MenuItems.Add(new MenuItem("Volume Down", OnVolumeDown));
-            trayMenu.MenuItems.Add(new MenuItem("Exit", OnExit));
+            this.trayMenu.MenuItems.Add(new MenuItem("DP", this.OnInputSourceDP) { Name = "DP" });
+            this.trayMenu.MenuItems.Add(new MenuItem("MiniDP", this.OnInputSourceMiniDP) { Name = "MiniDP" });
+            this.trayMenu.MenuItems.Add(new MenuItem("Volume Up", this.OnVolumeUp));
+            this.trayMenu.MenuItems.Add(new MenuItem("Volume Down", this.OnVolumeDown));
+            this.trayMenu.MenuItems.Add(new MenuItem("Off", this.OnOff));
+            this.trayMenu.MenuItems.Add(new MenuItem("Exit", this.OnExit));
 
             // Create a tray icon. In this example we use a
             // standard system icon for simplicity, but you
             // can of course use your own custom icon too.
-            trayIcon = new NotifyIcon();
-            trayIcon.Text = "MonitorSwitcher";
-            trayIcon.Icon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location); // new Icon(SystemIcons.Application, 40, 40);
+            this.trayIcon = new NotifyIcon();
+            this.trayIcon.Text = "MonitorSwitcher";
+            this.trayIcon.Icon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location); // new Icon(SystemIcons.Application, 40, 40);
 
             // Add menu to tray icon and show it.
-            trayIcon.ContextMenu = trayMenu;
-            trayIcon.Visible = true;
+            this.trayIcon.ContextMenu = this.trayMenu;
+            this.trayIcon.Visible = true;
 
-            refreshTimer_Tick(this, null);
+            this.RefreshTimer_Tick(this, null);
 
-            if (serverThread != null)
+            if (this.serverThread != null)
             {
-                serverThread.Start();
+                this.serverThread.Start();
             }
 
             refreshTimer.Start();
         }
 
-        private void OnVolumeDown(object sender, EventArgs e)
-        {
-            int volume = msg.GetVolume();
-
-            if (volume < 5)
-            {
-                volume = 0;
-            }
-            else
-            {
-                volume = volume - 5;
-            }
-
-            msg.SetVolume((byte)volume);
-        }
-
-        private void OnVolumeUp(object sender, EventArgs e)
-        {
-            int volume = msg.GetVolume();
-
-            if (volume<95)
-            {
-                volume =100;
-            }
-            else
-            {
-                volume = volume + 5;
-            }
-           
-            msg.SetVolume((byte)volume);
-        }
+        private delegate int SendMessageMethod(byte[] msgData, out byte[] msgReport);
 
         protected override void WndProc(ref Message m)
         {
@@ -129,19 +97,19 @@
 
                             dbi = (DEV_BROADCAST_DEVICEINTERFACE1)Marshal.PtrToStructure(m.LParam, typeof(DEV_BROADCAST_DEVICEINTERFACE1));
 
-                            String name = new string(dbi.dbcc_name);
+                            string name = new string(dbi.dbcc_name);
 
                             try
                             {
                                 if (name.Contains("USB#VID_046D&PID_C046"))
                                 {
-                                    if (serverThread == null)
+                                    if (this.serverThread == null)
                                     {
-                                        msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
+                                        this.msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
                                     }
                                     else
                                     {
-                                        msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
+                                        this.msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
                                     }
                                 }
                             }
@@ -156,29 +124,96 @@
             }
         }
 
+        protected override void OnLoad(EventArgs e)
+        {
+            this.Visible = false; // Hide form window.
+            this.ShowInTaskbar = false; // Remove from taskbar.
+
+            base.OnLoad(e);
+
+            UsbDeviceNotification.RegisterUsbDeviceNotification(this.Handle);
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            if (isDisposing)
+            {
+                // Release the icon resource.
+                this.trayIcon.Dispose();
+            }
+
+            base.Dispose(isDisposing);
+        }
+
+        private static IPAddress GetLocalIPAddress()
+        {
+            IPHostEntry host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (IPAddress ip in host.AddressList)
+            {
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    return ip;
+                }
+            }
+
+            throw new Exception("Local IP Address Not Found!");
+        }
+
+        private void OnVolumeDown(object sender, EventArgs e)
+        {
+            int volume = this.msg.GetVolume();
+
+            if (volume < 5)
+            {
+                volume = 0;
+            }
+            else
+            {
+                volume = volume - 5;
+            }
+
+            this.msg.SetVolume((byte)volume);
+        }
+
+        private void OnVolumeUp(object sender, EventArgs e)
+        {
+            int volume = this.msg.GetVolume();
+
+            if (volume < 95)
+            {
+                volume = 100;
+            }
+            else
+            {
+                volume = volume + 5;
+            }
+
+            this.msg.SetVolume((byte)volume);
+        }
+
         private void StartServer()
         {
             IPAddress localAddr = GetLocalIPAddress();
 
             this.listener = new TcpListener(localAddr, 11000);
 
-            serverRunning = true;
+            this.serverRunning = true;
 
             this.listener.Start();
 
-            while (serverRunning)
+            while (this.serverRunning)
             {
                 try
                 {
                     TcpClient client = this.listener.AcceptTcpClient();
 
-                    Thread t = new Thread(new ParameterizedThreadStart(HandleClient));
+                    Thread t = new Thread(new ParameterizedThreadStart(this.HandleClient));
 
                     t.Start(client);
                 }
                 catch (ThreadInterruptedException)
                 {
-                    serverRunning = false;
+                    this.serverRunning = false;
                 }
                 catch (System.Net.Sockets.SocketException)
                 {
@@ -191,7 +226,7 @@
         {
             TcpClient client = (TcpClient)obj;
 
-            Boolean clientConnected = true;
+            bool clientConnected = true;
 
             NetworkStream stream = client.GetStream();
 
@@ -199,7 +234,7 @@
 
             SendMessageMethod sendMessageMethod = this.SendMessageThreadSafe;
 
-            while (clientConnected && serverRunning)
+            while (clientConnected && this.serverRunning)
             {
                 try
                 {
@@ -215,7 +250,7 @@
 
                         int status = sendMessageMethod(msgData, out msgReport);
 
-                        //int status = comPort.SendMessage(msgData, out msgReport);
+                        ////int status = comPort.SendMessage(msgData, out msgReport);
 
                         buffer[0] = (byte)status;
 
@@ -237,51 +272,41 @@
 
         private int SendMessageThreadSafe(byte[] msgData, out byte[] msgReport)
         {
-            return comPort.SendMessage(msgData, out msgReport);
+            return this.comPort.SendMessage(msgData, out msgReport);
         }
 
-        private void refreshTimer_Tick(object sender, EventArgs e)
+        private void RefreshTimer_Tick(object sender, EventArgs e)
         {
             try
             {
-                BDM4065Messages.InputSourceNumber currentSource = msg.GetCurrentSource();
+                BDM4065Messages.InputSourceNumber currentSource = this.msg.GetCurrentSource();
 
-                trayMenu.MenuItems["DP"].Enabled = true;
-                trayMenu.MenuItems["MiniDP"].Enabled = true;
+                this.trayMenu.MenuItems["DP"].Enabled = true;
+                this.trayMenu.MenuItems["MiniDP"].Enabled = true;
 
-                trayMenu.MenuItems["DP"].Checked = (currentSource == BDM4065Messages.InputSourceNumber.DP);
-                trayMenu.MenuItems["MiniDP"].Checked = (currentSource == BDM4065Messages.InputSourceNumber.miniDP);
+                this.trayMenu.MenuItems["DP"].Checked = currentSource == BDM4065Messages.InputSourceNumber.DP;
+                this.trayMenu.MenuItems["MiniDP"].Checked = currentSource == BDM4065Messages.InputSourceNumber.miniDP;
             }
             catch
             {
-                trayMenu.MenuItems["DP"].Enabled = false;
-                trayMenu.MenuItems["MiniDP"].Enabled = false;
+                this.trayMenu.MenuItems["DP"].Enabled = false;
+                this.trayMenu.MenuItems["MiniDP"].Enabled = false;
             }
-        }
-
-        protected override void OnLoad(EventArgs e)
-        {
-            Visible = false; // Hide form window.
-            ShowInTaskbar = false; // Remove from taskbar.
-
-            base.OnLoad(e);
-
-            UsbDeviceNotification.RegisterUsbDeviceNotification(this.Handle);
         }
 
         private void OnInputSourceDP(object sender, EventArgs e)
         {
-            msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
+            this.msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
         }
 
         private void OnInputSourceMiniDP(object sender, EventArgs e)
         {
-            msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
+            this.msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
         }
 
         private void OnOff(object sender, EventArgs e)
         {
-            msg.SetPowerState(BDM4065Messages.PowerState.Off);
+            this.msg.SetPowerState(BDM4065Messages.PowerState.Off);
         }
 
         private void OnExit(object sender, EventArgs e)
@@ -291,43 +316,19 @@
                 this.listener.Stop();
             }
 
-            if (serverRunning)
+            if (this.serverRunning)
             {
-                serverRunning = false;
+                this.serverRunning = false;
 
-                serverThread.Interrupt();
+                this.serverThread.Interrupt();
 
-                if (!serverThread.Join(2000))
+                if (!this.serverThread.Join(2000))
                 {
-                    serverThread.Abort();
+                    this.serverThread.Abort();
                 }
             }
 
             Application.Exit();
-        }
-
-        protected override void Dispose(bool isDisposing)
-        {
-            if (isDisposing)
-            {
-                // Release the icon resource.
-                trayIcon.Dispose();
-            }
-
-            base.Dispose(isDisposing);
-        }
-
-        private static IPAddress GetLocalIPAddress()
-        {
-            IPHostEntry host = Dns.GetHostEntry(Dns.GetHostName());
-            foreach (IPAddress ip in host.AddressList)
-            {
-                if (ip.AddressFamily == AddressFamily.InterNetwork)
-                {
-                    return ip;
-                }
-            }
-            throw new Exception("Local IP Address Not Found!");
         }
     }
 }

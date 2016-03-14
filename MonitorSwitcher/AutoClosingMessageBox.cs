@@ -1,23 +1,20 @@
-﻿using System;
-using System.Windows.Forms;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
-using System.Threading;
-
-namespace MonitorSwitcher
+﻿namespace MonitorSwitcher
 {
+    using System;
+    using System.Windows.Forms;
+
     public class AutoClosingMessageBox
     {
-        System.Threading.Timer _timeoutTimer;
-        string _caption;
-        AutoClosingMessageBox(string text, string caption, int timeout)
+        private System.Threading.Timer timeoutTimer;
+        private string caption;
+
+        public AutoClosingMessageBox(string text, string caption, int timeout)
         {
-            _caption = caption;
-            _timeoutTimer = new System.Threading.Timer(OnTimerElapsed,
-                null, timeout, System.Threading.Timeout.Infinite);
-            MessageBox.Show(text, caption);
+            this.caption = caption;
+
+            this.timeoutTimer = new System.Threading.Timer(OnTimerElapsed, null, timeout, System.Threading.Timeout.Infinite);
+
+            MessageBox.Show(text, this.caption);
         }
 
         public static void Show(string text, string caption, int timeout)
@@ -25,18 +22,21 @@ namespace MonitorSwitcher
             new AutoClosingMessageBox(text, caption, timeout);
         }
 
-        void OnTimerElapsed(object state)
+        private void OnTimerElapsed(object state)
         {
-            IntPtr mbWnd = FindWindow("#32770", _caption); // lpClassName is #32770 for MessageBox
-            if (mbWnd != IntPtr.Zero)
-                SendMessage(mbWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-            _timeoutTimer.Dispose();
+            IntPtr hWnd = FindWindow("#32770", caption); // lpClassName is #32770 for MessageBox
+            if (hWnd != IntPtr.Zero)
+            {
+                SendMessage(hWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+            }
+
+            timeoutTimer.Dispose();
         }
 
-        const int WM_CLOSE = 0x0010;
+        private const int WM_CLOSE = 0x0010;
         [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
-        static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+        private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
         [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
-        static extern IntPtr SendMessage(IntPtr hWnd, UInt32 Msg, IntPtr wParam, IntPtr lParam);
+        private static extern IntPtr SendMessage(IntPtr hWnd, UInt32 Msg, IntPtr wParam, IntPtr lParam);
     }
 }

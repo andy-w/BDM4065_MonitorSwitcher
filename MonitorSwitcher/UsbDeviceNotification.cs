@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.InteropServices;
-
-namespace MonitorSwitcher
+﻿namespace MonitorSwitcher
 {
+    using System;
+    using System.Runtime.InteropServices;
+
     internal static class UsbDeviceNotification
     {
         public const int DbtDevicearrival = 0x8000; // system detected a new device        

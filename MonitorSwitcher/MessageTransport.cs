@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MonitorSwitcher
+﻿namespace MonitorSwitcher
 {
-    public interface MessageTransport
+    public interface IMessageTransport
     {
         int SendMessage(byte[] msgData, out byte[] msgReport);
     }

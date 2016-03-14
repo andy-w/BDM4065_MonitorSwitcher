@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Net.Sockets;
-
-namespace MonitorSwitcher
+﻿namespace MonitorSwitcher
 {
-    class RemoteSerialPort : MessageTransport
+    using System.Net.Sockets;
+    using System.Threading;
+
+    public class RemoteSerialPort : IMessageTransport
     {
         private TcpClient client;
 
@@ -20,9 +16,9 @@ namespace MonitorSwitcher
         {
             try
             {
-                if (client.Connected == false)
+                if (this.client.Connected == false)
                 {
-                    client = new TcpClient();
+                    this.client = new TcpClient();
 
                     this.client.Connect("192.168.1.202", 11000);
 
@@ -33,7 +29,7 @@ namespace MonitorSwitcher
 
                 Thread.Sleep(2000);
 
-               //if (this.client.GetStream().DataAvailable)
+                ////if (this.client.GetStream().DataAvailable)
                 {
                     byte[] recvBuffer = new byte[255];
 
@@ -54,6 +50,7 @@ namespace MonitorSwitcher
                         return 1;
                     }
                 }
+
                 /*else
                 {
                     msgResponse = null;
@@ -65,17 +62,14 @@ namespace MonitorSwitcher
             {
                 msgResponse = null;
 
-                if (client.Connected)
+                if (this.client.Connected)
                 {
-                    client.Close();
+                    this.client.Close();
 
-                    client = new TcpClient();
+                    this.client = new TcpClient();
                 }
 
                 return 1;
-            }
-            finally
-            {
             }
         }
     }

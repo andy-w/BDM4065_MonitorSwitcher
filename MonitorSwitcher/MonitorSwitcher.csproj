@@ -76,7 +76,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AutoClosingMessageBox.cs" />
+    <Compile Include="AutoClosingMessageBox.cs">
+      <ExcludeFromStyleCop>True</ExcludeFromStyleCop>
+    </Compile>
     <Compile Include="BDM4065Messages.cs" />
     <Compile Include="MessageTransport.cs" />
     <Compile Include="RemoteSerialPort.cs" />
