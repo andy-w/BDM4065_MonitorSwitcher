@@ -38,7 +38,7 @@
             }
             catch (Exception)
             {
-                MessageBox.Show("Unable to communicate with monitor", "", MessageBoxButtons.OK);
+               AutoClosingMessageBox.Show("Unable to communicate with monitor", "", 2000);
 
                 comPort = new RemoteSerialPort();
 

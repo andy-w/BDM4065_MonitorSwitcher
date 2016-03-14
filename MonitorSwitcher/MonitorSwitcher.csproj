@@ -51,10 +51,11 @@
     <ApplicationIcon>Monitor.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestCertificateThumbprint>525FF103D8C96F4C93DC4B4364EBC203F80E428B</ManifestCertificateThumbprint>
+    <ManifestCertificateThumbprint>6466812E8295B3A60CF87EE96607431101B7E0EF</ManifestCertificateThumbprint>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestKeyFile>MonitorSwitcher_TemporaryKey.pfx</ManifestKeyFile>
+    <ManifestKeyFile>
+    </ManifestKeyFile>
   </PropertyGroup>
   <PropertyGroup>
     <GenerateManifests>true</GenerateManifests>
@@ -75,6 +76,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AutoClosingMessageBox.cs" />
     <Compile Include="BDM4065Messages.cs" />
     <Compile Include="MessageTransport.cs" />
     <Compile Include="RemoteSerialPort.cs" />
