@@ -20,6 +20,8 @@
         private BDM4065Messages msg;
         private Thread serverThread = null;
         private bool serverRunning = false;
+        private BDM4065Messages.InputSourceNumber defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.DP;
+        private BDM4065Messages.InputSourceType defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
 
         public SysTrayApp()
         {
@@ -42,6 +44,34 @@
                 this.msg = new BDM4065Messages(this.comPort);
             }
 
+            String[] args = Environment.GetCommandLineArgs();
+
+            if (args.Length > 1)
+            {
+                switch (args[1])
+                {
+                    case "VGA":
+                        this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.VGA;
+                        this.defaultInputSourceType = BDM4065Messages.InputSourceType.VGA;
+                        break;
+
+                    case "MiniDP":
+                        this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.miniDP;
+                        this.defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
+                        break;
+
+                    case "DP":
+                        this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.DP;
+                        this.defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
+                        break;
+
+                    default:
+                        this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.DP;
+                        this.defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
+                        break;
+                }
+            }
+
             System.Windows.Forms.Timer refreshTimer = new System.Windows.Forms.Timer();
             refreshTimer.Interval = 10000;
             refreshTimer.Tick += this.RefreshTimer_Tick;
@@ -51,6 +81,7 @@
 
             this.trayMenu.MenuItems.Add(new MenuItem("DP", this.OnInputSourceDP) { Name = "DP" });
             this.trayMenu.MenuItems.Add(new MenuItem("MiniDP", this.OnInputSourceMiniDP) { Name = "MiniDP" });
+            this.trayMenu.MenuItems.Add(new MenuItem("VGA", this.OnInputSourceVGA) { Name = "VGA" });
             this.trayMenu.MenuItems.Add(new MenuItem("Volume Up", this.OnVolumeUp));
             this.trayMenu.MenuItems.Add(new MenuItem("Volume Down", this.OnVolumeDown));
             this.trayMenu.MenuItems.Add(new MenuItem("Off", this.OnOff));
@@ -103,14 +134,14 @@
                             {
                                 if (name.Contains("USB#VID_046D&PID_C046"))
                                 {
-                                    if (this.serverThread == null)
-                                    {
-                                        this.msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
-                                    }
-                                    else
-                                    {
-                                        this.msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
-                                    }
+                                   /// if (this.serverThread == null)
+                                   /// {
+                                        this.msg.SetInputSource(this.defaultInputSourceType, this.defaultInputSourceNumber);
+                                   /// }
+                                   /// else
+                                   /// {
+                                   ///     this.msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
+                                   /// }
                                 }
                             }
                             catch
@@ -302,6 +333,11 @@
         private void OnInputSourceMiniDP(object sender, EventArgs e)
         {
             this.msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
+        }
+
+        private void OnInputSourceVGA(object sender, EventArgs e)
+        {
+            this.msg.SetInputSource(BDM4065Messages.InputSourceType.VGA, BDM4065Messages.InputSourceNumber.VGA);
         }
 
         private void OnOff(object sender, EventArgs e)
