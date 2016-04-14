@@ -314,14 +314,17 @@
 
                 this.trayMenu.MenuItems["DP"].Enabled = true;
                 this.trayMenu.MenuItems["MiniDP"].Enabled = true;
+                this.trayMenu.MenuItems["VGA"].Enabled = true;
 
                 this.trayMenu.MenuItems["DP"].Checked = currentSource == BDM4065Messages.InputSourceNumber.DP;
                 this.trayMenu.MenuItems["MiniDP"].Checked = currentSource == BDM4065Messages.InputSourceNumber.miniDP;
+                this.trayMenu.MenuItems["VGA"].Checked = currentSource == BDM4065Messages.InputSourceNumber.VGA;
             }
             catch
             {
                 this.trayMenu.MenuItems["DP"].Enabled = false;
                 this.trayMenu.MenuItems["MiniDP"].Enabled = false;
+                this.trayMenu.MenuItems["VGA"].Enabled = false;
             }
         }
 
