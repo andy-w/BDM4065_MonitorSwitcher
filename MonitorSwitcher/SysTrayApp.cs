@@ -223,10 +223,22 @@
         }
 
         private void StartServer()
-        {
+        {          
+           /* IPAddress[] IPS = Dns.GetHostAddresses(Dns.GetHostName());
+
+            foreach (IPAddress ip in IPS)
+            {
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                {
+
+                    Console.WriteLine("IP address: " + ip);
+                }
+            } 
+            */
+
             IPAddress localAddr = GetLocalIPAddress();
 
-            this.listener = new TcpListener(localAddr, 11000);
+            this.listener = new TcpListener(IPAddress.Any, 11000);
 
             this.serverRunning = true;
 
