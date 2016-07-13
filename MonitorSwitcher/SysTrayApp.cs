@@ -65,6 +65,11 @@
                         this.defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
                         break;
 
+                    case "MHL-HDMI":
+                        this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.MHLHDMI2;
+                        this.defaultInputSourceType = BDM4065Messages.InputSourceType.HDMI;
+                        break;
+
                     default:
                         this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.DP;
                         this.defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
@@ -81,6 +86,7 @@
 
             this.trayMenu.MenuItems.Add(new MenuItem("DP", this.OnInputSourceDP) { Name = "DP" });
             this.trayMenu.MenuItems.Add(new MenuItem("MiniDP", this.OnInputSourceMiniDP) { Name = "MiniDP" });
+            this.trayMenu.MenuItems.Add(new MenuItem("MHL-HDMI", this.OnInputSourceMHLHDMI) { Name = "MHL-HDMI" });
             this.trayMenu.MenuItems.Add(new MenuItem("VGA", this.OnInputSourceVGA) { Name = "VGA" });
             this.trayMenu.MenuItems.Add(new MenuItem("Volume Up", this.OnVolumeUp));
             this.trayMenu.MenuItems.Add(new MenuItem("Volume Down", this.OnVolumeDown));
@@ -326,16 +332,19 @@
 
                 this.trayMenu.MenuItems["DP"].Enabled = true;
                 this.trayMenu.MenuItems["MiniDP"].Enabled = true;
+                this.trayMenu.MenuItems["MHL-HDMI"].Enabled = true;
                 this.trayMenu.MenuItems["VGA"].Enabled = true;
 
                 this.trayMenu.MenuItems["DP"].Checked = currentSource == BDM4065Messages.InputSourceNumber.DP;
                 this.trayMenu.MenuItems["MiniDP"].Checked = currentSource == BDM4065Messages.InputSourceNumber.miniDP;
+                this.trayMenu.MenuItems["MHL-HDMI"].Checked = currentSource == BDM4065Messages.InputSourceNumber.MHLHDMI2;
                 this.trayMenu.MenuItems["VGA"].Checked = currentSource == BDM4065Messages.InputSourceNumber.VGA;
             }
             catch
             {
                 this.trayMenu.MenuItems["DP"].Enabled = false;
                 this.trayMenu.MenuItems["MiniDP"].Enabled = false;
+                this.trayMenu.MenuItems["MHL-HDMI"].Enabled = false;
                 this.trayMenu.MenuItems["VGA"].Enabled = false;
             }
         }
@@ -348,6 +357,11 @@
         private void OnInputSourceMiniDP(object sender, EventArgs e)
         {
             this.msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
+        }
+
+        private void OnInputSourceMHLHDMI(object sender, EventArgs e)
+        {
+            this.msg.SetInputSource(BDM4065Messages.InputSourceType.HDMI, BDM4065Messages.InputSourceNumber.MHLHDMI2);
         }
 
         private void OnInputSourceVGA(object sender, EventArgs e)
