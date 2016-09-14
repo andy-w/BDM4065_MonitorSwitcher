@@ -88,7 +88,7 @@
             this.trayMenu.MenuItems.Add(new MenuItem("MiniDP", this.OnInputSourceMiniDP) { Name = "MiniDP" });
             this.trayMenu.MenuItems.Add(new MenuItem("MHL-HDMI", this.OnInputSourceMHLHDMI) { Name = "MHL-HDMI" });
             this.trayMenu.MenuItems.Add(new MenuItem("VGA", this.OnInputSourceVGA) { Name = "VGA" });
-            this.trayMenu.MenuItems.Add(new MenuItem("Volume Up", this.OnVolumeUp));
+            this.trayMenu.MenuItems.Add(new MenuItem("Volume Up", this.OnVolumeUp) { Name = "Volume Up" });
             this.trayMenu.MenuItems.Add(new MenuItem("Volume Down", this.OnVolumeDown));
             this.trayMenu.MenuItems.Add(new MenuItem("Off", this.OnOff));
             this.trayMenu.MenuItems.Add(new MenuItem("Exit", this.OnExit));
@@ -339,6 +339,7 @@
                 this.trayMenu.MenuItems["MiniDP"].Checked = currentSource == BDM4065Messages.InputSourceNumber.miniDP;
                 this.trayMenu.MenuItems["MHL-HDMI"].Checked = currentSource == BDM4065Messages.InputSourceNumber.MHLHDMI2;
                 this.trayMenu.MenuItems["VGA"].Checked = currentSource == BDM4065Messages.InputSourceNumber.VGA;
+                this.trayMenu.MenuItems["Volume Up"].Text = "Volume Up (" + this.msg.GetVolume()  + ")";
             }
             catch
             {
