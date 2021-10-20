@@ -2,10 +2,13 @@
 {
     using System.IO.Ports;
     using System.Threading;
+    using System;
 
     public class LocalSerialPort : IMessageTransport
     {
         private SerialPort comPort;
+
+        private static Mutex mutexComPort = new Mutex();
 
         public LocalSerialPort()
         {
@@ -24,11 +27,13 @@
         {
             try
             {
+                mutexComPort.WaitOne();
+
                 this.comPort.Open();
 
                 this.comPort.Write(msgData, 0, msgData.Length);
 
-                Thread.Sleep(200);
+                Thread.Sleep(1000);
 
                 if (this.comPort.BytesToRead > 0)
                 {
@@ -45,7 +50,7 @@
                     return 1;
                 }
             }
-            catch
+            catch (Exception)
             {
                 msgResponse = null;
 
@@ -54,6 +59,8 @@
             finally
             {
                 this.comPort.Close();
+
+                mutexComPort.ReleaseMutex();
             }
         }
     }

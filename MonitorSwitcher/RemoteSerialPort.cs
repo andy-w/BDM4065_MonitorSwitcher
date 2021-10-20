@@ -20,7 +20,7 @@
                 {
                     this.client = new TcpClient();
 
-                    this.client.Connect("192.168.1.202", 11000);
+                    this.client.Connect("RemoteMonitor", 11000);
 
                     this.client.ReceiveTimeout = 2000;
                 }
@@ -39,7 +39,7 @@
                     {
                         msgResponse = new byte[noBytes - 1];
 
-                        System.Buffer.BlockCopy(recvBuffer, 1, msgResponse, 0, noBytes - 1);
+                        System.Buffer.BlockCopy(recvBuffer, 1, msgResponse, 0, noBytes- 1);
 
                         return 0;
                     }

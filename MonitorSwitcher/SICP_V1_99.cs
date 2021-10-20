@@ -1,43 +1,55 @@
-﻿namespace MonitorSwitcher
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace MonitorSwitcher
 {
     using System;
-    using System.Windows.Forms;
 
-    public class BDM4065Messages : MonitorMessages
+    public class SICP_V1_99 : MonitorMessages
     {
         private IMessageTransport msgTransport;
 
-        private byte[] msgHeader = new byte[] { 0xA6, 0x01, 0x00, 0x00, 0x00 };
+        private InputSourceTypeNumber defaultInputSourceTypeNumber;
 
-        private InputSourceNumber defaultInputSourceNumber = InputSourceNumber.DP;
-        private InputSourceType defaultInputSourceType = InputSourceType.DisplayPort;
+        private byte[] msgHeader = new byte[] { 0x0, 0x01, 0x00 };
 
-        public BDM4065Messages(IMessageTransport msgTransport)
+        public InputSourceTypeNumber currentSource { get; set; }
+
+        public SICP_V1_99(IMessageTransport msgTransport)
         {
             this.msgTransport = msgTransport;
         }
 
-        public enum InputSourceNumber : byte
-        {
-            VGA = 0x00,
-            DVI = 0x01,
-            HDMI = 0x02,
-            MHLHDMI2 = 0x03,
-            DP = 0x04,
-            miniDP = 0x05,
-        }
-
-        public enum InputSourceType : byte
+        public enum InputSourceTypeNumber : byte
         {
             Video = 0x01,
-            SVideo = 0x02,
-            DVDHD = 0x03,
-            RGBHV = 0x04,
+            S_Video = 0x02,
+            Component = 0x03,
+            CVI2 = 0x04,  // (not applicable)
             VGA = 0x05,
-            HDMI = 0x06,
-            DVI = 0x07,
-            CardOPS = 0x08,
-            DisplayPort = 0x09
+            HDMI2 = 0x06,
+            DisplayPort2 = 0x07,
+            USB2 = 0x08,
+            Card_DVID = 0x09,
+            DisplayPort1 = 0x0A,
+            CardOPS = 0x0B,
+            USB1 = 0x0C,
+            HDMI = 0x0D,
+            DVID = 0x0E,
+            HDMI3 = 0x0F,
+            Browser = 0x10,
+            SmartCMS = 0x11,
+            DMS = 0X12,   // (Digital Media Server)
+            InternalStorage = 0x13,
+            Reserved1 = 0x14,
+            Reserved2 = 0x15,
+            MediaPlayer = 0x16,
+            PDFPlayer = 0x17,
+            Custom = 0x18,
         }
 
         private enum MessageSet : byte
@@ -61,19 +73,11 @@
 
         override public PowerState GetPowerState()
         {
-            byte[] msgData = this.BuildMessage(new byte[]
-            {
-                0x03,
-                0x01,
-                (byte)MessageSet.PowerStateGet,
-                0x00
-            });
+            byte[] msgData = this.BuildMessage(new byte[] { (byte)MessageSet.PowerStateGet });
 
             byte[] msgResponse;
 
-            byte[] tmsgData = { 0x05, 0x01, 0x0, 0x19, 0x1D };
-
-            if (this.msgTransport.SendMessage(tmsgData, out msgResponse) == 0)
+            if (this.msgTransport.SendMessage(msgData, out msgResponse) == 0)
             {
                 byte[] msgReport;
 
@@ -92,9 +96,9 @@
             }
         }
 
-        public InputSourceNumber GetCurrentSource()
+        public InputSourceTypeNumber GetCurrentSource()
         {
-            byte[] msgData = this.BuildMessage(new byte[] { 0x03, 0x01, (byte)MessageSet.CurrentSourceGet, 0x00 });
+            byte[] msgData = this.BuildMessage(new byte[] { (byte)MessageSet.CurrentSourceGet });
 
             byte[] msgResponse;
 
@@ -104,7 +108,7 @@
 
                 if (this.ProcessResponse(msgResponse, out msgReport) == 0)
                 {
-                    return (InputSourceNumber)msgReport[2];
+                    return (InputSourceTypeNumber)msgReport[2];
                 }
                 else
                 {
@@ -117,9 +121,9 @@
             }
         }
 
-        internal void SetInputSource(InputSourceType sourceType, InputSourceNumber sourceNumber)
+        internal void SetInputSource(InputSourceTypeNumber sourceTypeNumber)
         {
-            byte[] msgData = this.BuildMessage(new byte[] { 0x07, 0x01, (byte)MessageSet.InputSourceSet, (byte)sourceType, (byte)sourceNumber, 0x01, 0x00, 0x00 });
+            byte[] msgData = this.BuildMessage(new byte[] { (byte)MessageSet.InputSourceSet, (byte)sourceTypeNumber, (byte)sourceTypeNumber, 0x01, 0x00 });
 
             byte[] msgResponse;
 
@@ -129,6 +133,8 @@
 
                 if (this.ProcessResponse(msgResponse, out msgReport) == 0)
                 {
+                    this.currentSource = sourceTypeNumber;
+
                     return;
                 }
                 else
@@ -144,7 +150,7 @@
 
         override public void SetPowerState(PowerState powerState)
         {
-            byte[] msgData = this.BuildMessage(new byte[] { 0x04, 0x01, (byte)MessageSet.PowerStateSet, (byte)powerState, 0x00 });
+            byte[] msgData = this.BuildMessage(new byte[] { (byte)MessageSet.PowerStateSet, (byte)powerState });
 
             byte[] msgResponse;
 
@@ -174,7 +180,7 @@
 
         override public int GetVolume()
         {
-            byte[] msgData = this.BuildMessage(new byte[] { 0x03, 0x01, (byte)MessageSet.VolumeGet, 0x00 });
+            byte[] msgData = this.BuildMessage(new byte[] { (byte)MessageSet.VolumeGet });
 
             byte[] msgResponse;
 
@@ -201,7 +207,7 @@
 
         override public void SetVolume(byte volume)
         {
-            byte[] msgData = this.BuildMessage(new byte[] { 0x04, 0x01, (byte)MessageSet.VolumeSet, volume, 0x00 });
+            byte[] msgData = this.BuildMessage(new byte[] { (byte)MessageSet.VolumeSet, volume });
 
             byte[] msgResponse;
 
@@ -228,11 +234,13 @@
 
         private byte[] BuildMessage(byte[] msgData)
         {
-            byte[] msg = new byte[this.msgHeader.Length + msgData.Length];
+            byte[] msg = new byte[this.msgHeader.Length + msgData.Length + 1];
 
             System.Buffer.BlockCopy(this.msgHeader, 0, msg, 0, this.msgHeader.Length);
 
             System.Buffer.BlockCopy(msgData, 0, msg, this.msgHeader.Length, msgData.Length);
+
+            msg[0] = (byte)msg.Length;
 
             msg[msg.Length - 1] = this.CheckSum(msg);
 
@@ -243,9 +251,9 @@
         {
             if (this.CheckSum(msgResponse) == msgResponse[msgResponse.Length - 1])
             {
-                msgReport = new byte[msgResponse[4] - 2];
+                msgReport = new byte[msgResponse[0] - 4];
 
-                System.Buffer.BlockCopy(msgResponse, 6, msgReport, 0, msgResponse[4] - 2);
+                System.Buffer.BlockCopy(msgResponse, 3, msgReport, 0, msgResponse[0] - 4);
 
                 return 0;
             }
@@ -273,110 +281,107 @@
         {
             switch (inputSource)
             {
-                case "VGA":
-                    this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.VGA;
-                    this.defaultInputSourceType = BDM4065Messages.InputSourceType.VGA;
-                    break;
-
-                case "MiniDP":
-                    this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.miniDP;
-                    this.defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
-                    break;
-
-                case "DP":
-                    this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.DP;
-                    this.defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
+                case "DP1":
+                    this.defaultInputSourceTypeNumber = InputSourceTypeNumber.DisplayPort1;
                     break;
 
                 case "HDMI":
-                    this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.HDMI;
-                    this.defaultInputSourceType = BDM4065Messages.InputSourceType.HDMI;
+                    this.defaultInputSourceTypeNumber = InputSourceTypeNumber.HDMI;
                     break;
 
-                case "MHL-HDMI":
-                    this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.MHLHDMI2;
-                    this.defaultInputSourceType = BDM4065Messages.InputSourceType.HDMI;
+                case "HDMI2":
+                    this.defaultInputSourceTypeNumber = InputSourceTypeNumber.HDMI2;
+                    break;
+
+                case "HDMI3":
+                    this.defaultInputSourceTypeNumber = InputSourceTypeNumber.HDMI3;
                     break;
 
                 default:
-                    this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.DP;
-                    this.defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
+                    this.defaultInputSourceTypeNumber = InputSourceTypeNumber.DisplayPort1;
                     break;
+
             }
         }
 
         public override void AddInputSourceToContextMenu(ContextMenu contextMenu)
         {
-            contextMenu.MenuItems.Add(new MenuItem("DP", this.OnInputSourceDP) { Name = "DP" });
-            contextMenu.MenuItems.Add(new MenuItem("MiniDP", this.OnInputSourceMiniDP) { Name = "MiniDP" });
+            contextMenu.MenuItems.Add(new MenuItem("DP1", this.OnInputSourceDP) { Name = "DP1" });
             contextMenu.MenuItems.Add(new MenuItem("HDMI", this.OnInputSourceHDMI) { Name = "HDMI" });
-            contextMenu.MenuItems.Add(new MenuItem("MHL-HDMI", this.OnInputSourceMHLHDMI) { Name = "MHL-HDMI" });
-            contextMenu.MenuItems.Add(new MenuItem("VGA", this.OnInputSourceVGA) { Name = "VGA" });
+            contextMenu.MenuItems.Add(new MenuItem("HDMI2", this.OnInputSourceHDMI2) { Name = "HDMI2" });
+            contextMenu.MenuItems.Add(new MenuItem("HDMI3", this.OnInputSourceHDMI3) { Name = "HDMI3" });
         }
 
         private void OnInputSourceHDMI(object sender, EventArgs e)
         {
-            this.SetInputSource(InputSourceType.HDMI, InputSourceNumber.HDMI);
+            this.SetInputSource(InputSourceTypeNumber.HDMI);
         }
+        private void OnInputSourceHDMI2(object sender, EventArgs e)
+        {
+            this.SetInputSource(InputSourceTypeNumber.HDMI2);
+        }
+
+        private void OnInputSourceHDMI3(object sender, EventArgs e)
+        {
+            this.SetInputSource(InputSourceTypeNumber.HDMI3);
+        }
+
 
         private void OnInputSourceDP(object sender, EventArgs e)
         {
-            this.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
-        }
-
-        private void OnInputSourceMiniDP(object sender, EventArgs e)
-        {
-            this.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
-        }
-
-        private void OnInputSourceMHLHDMI(object sender, EventArgs e)
-        {
-            this.SetInputSource(BDM4065Messages.InputSourceType.HDMI, BDM4065Messages.InputSourceNumber.MHLHDMI2);
-        }
-
-        private void OnInputSourceVGA(object sender, EventArgs e)
-        {
-            this.SetInputSource(BDM4065Messages.InputSourceType.VGA, BDM4065Messages.InputSourceNumber.VGA);
+            this.SetInputSource(InputSourceTypeNumber.DisplayPort1);
         }
 
         public override void UpdateContextMenu(ContextMenu contextMenu)
         {
             try
             {
-                BDM4065Messages.InputSourceNumber currentSource = this.GetCurrentSource();
+                this.currentSource = this.GetCurrentSource();
 
-                contextMenu.MenuItems["DP"].Enabled = true;
-                contextMenu.MenuItems["MiniDP"].Enabled = true;
-                contextMenu.MenuItems["MHL-HDMI"].Enabled = true;
+                contextMenu.MenuItems["DP1"].Enabled = true;
                 contextMenu.MenuItems["HDMI"].Enabled = true;
-                contextMenu.MenuItems["VGA"].Enabled = true;
+                contextMenu.MenuItems["HDMI2"].Enabled = true;
+                contextMenu.MenuItems["HDMI3"].Enabled = true;
 
-                contextMenu.MenuItems["DP"].Checked = currentSource == BDM4065Messages.InputSourceNumber.DP;
-                contextMenu.MenuItems["MiniDP"].Checked = currentSource == BDM4065Messages.InputSourceNumber.miniDP;
-                contextMenu.MenuItems["MHL-HDMI"].Checked = currentSource == BDM4065Messages.InputSourceNumber.MHLHDMI2;
-                contextMenu.MenuItems["HDMI"].Checked = currentSource == BDM4065Messages.InputSourceNumber.HDMI;
-                contextMenu.MenuItems["VGA"].Checked = currentSource == BDM4065Messages.InputSourceNumber.VGA;
+                contextMenu.MenuItems["DP1"].Checked = currentSource == InputSourceTypeNumber.DisplayPort1;
+                contextMenu.MenuItems["HDMI"].Checked = currentSource == InputSourceTypeNumber.HDMI;
+                contextMenu.MenuItems["HDMI2"].Checked = currentSource == InputSourceTypeNumber.HDMI2;
+                contextMenu.MenuItems["HDMI3"].Checked = currentSource == InputSourceTypeNumber.HDMI3;
             }
             catch
             {
-                contextMenu.MenuItems["DP"].Enabled = false;
-                contextMenu.MenuItems["MiniDP"].Enabled = false;
-                contextMenu.MenuItems["MHL-HDMI"].Enabled = false;
+                contextMenu.MenuItems["DP1"].Enabled = false;
                 contextMenu.MenuItems["HDMI"].Enabled = false;
-                contextMenu.MenuItems["VGA"].Enabled = false;
+                contextMenu.MenuItems["HDMI2"].Enabled = false;
+                contextMenu.MenuItems["HDMI3"].Enabled = false;
             }
-
         }
 
         public override void SetInputSourceToDefault()
         {
-            this.SetInputSource(this.defaultInputSourceType,this.defaultInputSourceNumber);
+            if (this.currentSource != this.defaultInputSourceTypeNumber)
+            {
+                this.SetInputSource(this.defaultInputSourceTypeNumber);
+            }
         }
 
         public override int RemoteSendMessage(byte[] msgData, out byte[] msgReport)
         {
-            return msgTransport.SendMessage(msgData, out msgReport);
-        }
+            switch (msgData[this.msgHeader.Length])
+            {
+                case (byte)MessageSet.CurrentSourceGet:
 
+                    msgReport = new byte[] { 0, (byte)MessageSet.CurrentSourceGet, (byte)this.currentSource, (byte)this.currentSource, 0, 0 };
+                    
+                    return msgTransport.SendMessage(msgData, out msgReport);
+
+                default:
+
+                    return msgTransport.SendMessage(msgData, out msgReport);
+
+            }
+
+            
+        }
     }
 }

@@ -17,11 +17,11 @@
         private ContextMenu trayMenu;
         private TcpListener listener;
         private IMessageTransport comPort;
-        private BDM4065Messages msg;
+        private MonitorMessages msg;
         private Thread serverThread = null;
         private bool serverRunning = false;
-        private BDM4065Messages.InputSourceNumber defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.DP;
-        private BDM4065Messages.InputSourceType defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
+
+        private static Mutex mutexProcess = new Mutex();
 
         public SysTrayApp()
         {
@@ -29,7 +29,9 @@
             {
                 this.comPort = new LocalSerialPort();
 
-                this.msg = new BDM4065Messages(this.comPort);
+                //this.msg = new BDM4065Messages(this.comPort);
+
+                this.msg = new SICP_V1_99(this.comPort);
 
                 this.msg.GetPowerState();
 
@@ -41,53 +43,27 @@
 
                 this.comPort = new RemoteSerialPort();
 
-                this.msg = new BDM4065Messages(this.comPort);
+                //this.msg = new BDM4065Messages(this.comPort);
+
+                this.msg = new SICP_V1_99(this.comPort);
             }
 
             String[] args = Environment.GetCommandLineArgs();
 
             if (args.Length > 1)
             {
-                switch (args[1])
-                {
-                    case "VGA":
-                        this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.VGA;
-                        this.defaultInputSourceType = BDM4065Messages.InputSourceType.VGA;
-                        break;
-
-                    case "MiniDP":
-                        this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.miniDP;
-                        this.defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
-                        break;
-
-                    case "DP":
-                        this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.DP;
-                        this.defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
-                        break;
-
-                    case "MHL-HDMI":
-                        this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.MHLHDMI2;
-                        this.defaultInputSourceType = BDM4065Messages.InputSourceType.HDMI;
-                        break;
-
-                    default:
-                        this.defaultInputSourceNumber = BDM4065Messages.InputSourceNumber.DP;
-                        this.defaultInputSourceType = BDM4065Messages.InputSourceType.DisplayPort;
-                        break;
-                }
+                this.msg.SetDefaultInputSource(args[1]);
             }
 
             System.Windows.Forms.Timer refreshTimer = new System.Windows.Forms.Timer();
-            refreshTimer.Interval = 10000;
+            refreshTimer.Interval = 30000;
             refreshTimer.Tick += this.RefreshTimer_Tick;
 
             // Create a simple tray menu with only one item.
             this.trayMenu = new ContextMenu();
 
-            this.trayMenu.MenuItems.Add(new MenuItem("DP", this.OnInputSourceDP) { Name = "DP" });
-            this.trayMenu.MenuItems.Add(new MenuItem("MiniDP", this.OnInputSourceMiniDP) { Name = "MiniDP" });
-            this.trayMenu.MenuItems.Add(new MenuItem("MHL-HDMI", this.OnInputSourceMHLHDMI) { Name = "MHL-HDMI" });
-            this.trayMenu.MenuItems.Add(new MenuItem("VGA", this.OnInputSourceVGA) { Name = "VGA" });
+            this.msg.AddInputSourceToContextMenu(this.trayMenu);
+
             this.trayMenu.MenuItems.Add(new MenuItem("Volume Up", this.OnVolumeUp) { Name = "Volume Up" });
             this.trayMenu.MenuItems.Add(new MenuItem("Volume Down", this.OnVolumeDown));
             this.trayMenu.MenuItems.Add(new MenuItem("Off", this.OnOff));
@@ -114,7 +90,6 @@
             refreshTimer.Start();
         }
 
-        private delegate int SendMessageMethod(byte[] msgData, out byte[] msgReport);
 
         protected override void WndProc(ref Message m)
         {
@@ -138,16 +113,9 @@
 
                             try
                             {
-                                if (name.Contains("USB#VID_046D&PID_C046"))
+                                if (name.Contains("USB#VID_046D&PID_C046") || name.Contains("USB#VID_1307&PID_0165") || name.Contains("USB#VID_0B0E&PID_0312"))
                                 {
-                                   /// if (this.serverThread == null)
-                                   /// {
-                                        this.msg.SetInputSource(this.defaultInputSourceType, this.defaultInputSourceNumber);
-                                   /// }
-                                   /// else
-                                   /// {
-                                   ///     this.msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
-                                   /// }
+                                    this.msg.SetInputSourceToDefault();
                                 }
                             }
                             catch
@@ -229,18 +197,18 @@
         }
 
         private void StartServer()
-        {          
-           /* IPAddress[] IPS = Dns.GetHostAddresses(Dns.GetHostName());
+        {
+            /* IPAddress[] IPS = Dns.GetHostAddresses(Dns.GetHostName());
 
-            foreach (IPAddress ip in IPS)
-            {
-                if (ip.AddressFamily == AddressFamily.InterNetwork)
-                {
+             foreach (IPAddress ip in IPS)
+             {
+                 if (ip.AddressFamily == AddressFamily.InterNetwork)
+                 {
 
-                    Console.WriteLine("IP address: " + ip);
-                }
-            } 
-            */
+                     Console.WriteLine("IP address: " + ip);
+                 }
+             } 
+             */
 
             IPAddress localAddr = GetLocalIPAddress();
 
@@ -271,6 +239,9 @@
             }
         }
 
+        private delegate int SendMessageMethod(byte[] msgData, out byte[] msgReport);
+
+
         private void HandleClient(object obj)
         {
             TcpClient client = (TcpClient)obj;
@@ -289,30 +260,42 @@
                 {
                     int noBytes = stream.Read(buffer, 0, buffer.Length);
 
-                    if (noBytes > 0)
+                    try
                     {
-                        byte[] msgData = new byte[noBytes];
+                        mutexProcess.WaitOne();
 
-                        System.Buffer.BlockCopy(buffer, 0, msgData, 0, noBytes);
+                        Console.WriteLine("Read Start: " + client.Client.RemoteEndPoint.ToString());
 
-                        byte[] msgReport;
+                        if (noBytes > 0)
+                        {
+                            byte[] msgData = new byte[noBytes];
 
-                        int status = sendMessageMethod(msgData, out msgReport);
+                            System.Buffer.BlockCopy(buffer, 0, msgData, 0, noBytes);
 
-                        ////int status = comPort.SendMessage(msgData, out msgReport);
+                            byte[] msgReport;
 
-                        buffer[0] = (byte)status;
+                            int status = sendMessageMethod(msgData, out msgReport);
 
-                        System.Buffer.BlockCopy(msgReport, 0, buffer, 1, msgReport.Length);
+                            ////int status = comPort.SendMessage(msgData, out msgReport);
+                            Console.WriteLine(string.Join(", ", msgReport));
+                            buffer[0] = (byte)status;
 
-                        stream.Write(buffer, 0, msgReport.Length + 1);
+                            System.Buffer.BlockCopy(msgReport, 0, buffer, 1, msgReport.Length);
+
+                            stream.Write(buffer, 0, msgReport.Length + 1);
+                        }
+                        else
+                        {
+                            clientConnected = false;
+                        }
+                        Console.WriteLine("Read Done: " + client.Client.RemoteEndPoint.ToString());
                     }
-                    else
+                    finally
                     {
-                        clientConnected = false;
+                        mutexProcess.ReleaseMutex();
                     }
                 }
-                catch
+                catch (Exception)
                 {
                     clientConnected = false;
                 }
@@ -321,54 +304,25 @@
 
         private int SendMessageThreadSafe(byte[] msgData, out byte[] msgReport)
         {
-            return this.comPort.SendMessage(msgData, out msgReport);
+            return this.msg.RemoteSendMessage(msgData, out msgReport);
         }
 
         private void RefreshTimer_Tick(object sender, EventArgs e)
         {
             try
             {
-                BDM4065Messages.InputSourceNumber currentSource = this.msg.GetCurrentSource();
+                mutexProcess.WaitOne();
 
-                this.trayMenu.MenuItems["DP"].Enabled = true;
-                this.trayMenu.MenuItems["MiniDP"].Enabled = true;
-                this.trayMenu.MenuItems["MHL-HDMI"].Enabled = true;
-                this.trayMenu.MenuItems["VGA"].Enabled = true;
+                this.msg.UpdateContextMenu(this.trayMenu);
 
-                this.trayMenu.MenuItems["DP"].Checked = currentSource == BDM4065Messages.InputSourceNumber.DP;
-                this.trayMenu.MenuItems["MiniDP"].Checked = currentSource == BDM4065Messages.InputSourceNumber.miniDP;
-                this.trayMenu.MenuItems["MHL-HDMI"].Checked = currentSource == BDM4065Messages.InputSourceNumber.MHLHDMI2;
-                this.trayMenu.MenuItems["VGA"].Checked = currentSource == BDM4065Messages.InputSourceNumber.VGA;
-                this.trayMenu.MenuItems["Volume Up"].Text = "Volume Up (" + this.msg.GetVolume()  + ")";
+               // this.trayMenu.MenuItems["Volume Up"].Text = "Volume Up (" + this.msg.GetVolume() + ")";
             }
-            catch
+            finally
             {
-                this.trayMenu.MenuItems["DP"].Enabled = false;
-                this.trayMenu.MenuItems["MiniDP"].Enabled = false;
-                this.trayMenu.MenuItems["MHL-HDMI"].Enabled = false;
-                this.trayMenu.MenuItems["VGA"].Enabled = false;
+                mutexProcess.ReleaseMutex();
             }
         }
 
-        private void OnInputSourceDP(object sender, EventArgs e)
-        {
-            this.msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.DP);
-        }
-
-        private void OnInputSourceMiniDP(object sender, EventArgs e)
-        {
-            this.msg.SetInputSource(BDM4065Messages.InputSourceType.DisplayPort, BDM4065Messages.InputSourceNumber.miniDP);
-        }
-
-        private void OnInputSourceMHLHDMI(object sender, EventArgs e)
-        {
-            this.msg.SetInputSource(BDM4065Messages.InputSourceType.HDMI, BDM4065Messages.InputSourceNumber.MHLHDMI2);
-        }
-
-        private void OnInputSourceVGA(object sender, EventArgs e)
-        {
-            this.msg.SetInputSource(BDM4065Messages.InputSourceType.VGA, BDM4065Messages.InputSourceNumber.VGA);
-        }
 
         private void OnOff(object sender, EventArgs e)
         {
