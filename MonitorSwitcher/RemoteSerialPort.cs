@@ -6,9 +6,12 @@
     public class RemoteSerialPort : IMessageTransport
     {
         private TcpClient client;
+        private int remotePort;
 
-        public RemoteSerialPort()
+        public RemoteSerialPort(int remotePort)
         {
+            this.remotePort = remotePort;
+
             this.client = new TcpClient() { ReceiveTimeout = 1000 };
         }
 
@@ -20,7 +23,7 @@
                 {
                     this.client = new TcpClient();
 
-                    this.client.Connect("RemoteMonitor", 11000);
+                    this.client.Connect("RemoteMonitor", this.remotePort);
 
                     this.client.ReceiveTimeout = 2000;
                 }

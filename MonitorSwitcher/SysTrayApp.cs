@@ -12,6 +12,12 @@
     public class SysTrayApp : Form
     {
         private const int DBT_DEVTYP_DEVICEINTERFACE = 0x05;
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern int MessageBoxTimeout(IntPtr hWnd, String lpText, String lpCaption, uint uType, Int16 wLanguageId, Int32 dwMilliseconds);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr GetForegroundWindow();
+        
         private NotifyIcon trayIcon;
 
         private ContextMenu trayMenu;
@@ -20,14 +26,39 @@
         private MonitorMessages msg;
         private Thread serverThread = null;
         private bool serverRunning = false;
+        private int listenerPort = 1000;
+        private string serialPort = "COM1";
 
         private static Mutex mutexProcess = new Mutex();
 
         public SysTrayApp()
         {
+            String[] args = Environment.GetCommandLineArgs();
+
+            if (args.Length > 2)
+            {
+                try
+                {
+                    this.listenerPort = Convert.ToInt32(args[2]);
+                }
+                catch
+                {
+                    uint uiFlags = /*MB_OK*/ 0x00000000 | /*MB_SETFOREGROUND*/  0x00010000 | /*MB_SYSTEMMODAL*/ 0x00001000 | /*MB_ICONEXCLAMATION*/ 0x00000030;
+
+                    MessageBoxTimeout(GetForegroundWindow(), $"Invalid port number, using " + listenerPort, $"MonitorSwitcher", uiFlags, 0, 10000);
+                }
+            }
+
+            string locRem;
+
+            if (args.Length > 3)
+            {
+                serialPort = args[3];
+            }
+
             try
             {
-                this.comPort = new LocalSerialPort();
+                this.comPort = new LocalSerialPort(serialPort);
 
                 //this.msg = new BDM4065Messages(this.comPort);
 
@@ -36,24 +67,29 @@
                 this.msg.GetPowerState();
 
                 this.serverThread = new Thread(new ThreadStart(this.StartServer));
+
+                locRem = "LocalHost (" + serialPort + ")";
             }
             catch (Exception)
             {
-                AutoClosingMessageBox.Show("Unable to communicate with monitor, using remote connection", string.Empty, 2000);
+                uint uiFlags = /*MB_OK*/ 0x00000000 | /*MB_SETFOREGROUND*/  0x00010000 | /*MB_SYSTEMMODAL*/ 0x00001000 | /*MB_ICONEXCLAMATION*/ 0x00000030;
 
-                this.comPort = new RemoteSerialPort();
+                MessageBoxTimeout(GetForegroundWindow(), $"Unable to communicate with monitor, using remote connection RemoteMonitor:" + this.listenerPort, $"MonitorSwitcher", uiFlags, 0, 10000);
+
+                this.comPort = new RemoteSerialPort(this.listenerPort);
 
                 //this.msg = new BDM4065Messages(this.comPort);
 
                 this.msg = new SICP_V1_99(this.comPort);
-            }
 
-            String[] args = Environment.GetCommandLineArgs();
+                locRem = "RemoteMonitor";
+            }
 
             if (args.Length > 1)
             {
                 this.msg.SetDefaultInputSource(args[1]);
             }
+
 
             System.Windows.Forms.Timer refreshTimer = new System.Windows.Forms.Timer();
             refreshTimer.Interval = 30000;
@@ -73,7 +109,7 @@
             // standard system icon for simplicity, but you
             // can of course use your own custom icon too.
             this.trayIcon = new NotifyIcon();
-            this.trayIcon.Text = "MonitorSwitcher";
+            this.trayIcon.Text = "MonitorSwitcher V2 (" + locRem  + ":" + this.listenerPort + ")";
             this.trayIcon.Icon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location); // new Icon(SystemIcons.Application, 40, 40);
 
             // Add menu to tray icon and show it.
@@ -113,7 +149,7 @@
 
                             try
                             {
-                                if (name.Contains("USB#VID_046D&PID_C046") || name.Contains("USB#VID_1307&PID_0165") || name.Contains("USB#VID_0B0E&PID_0312"))
+                                if (name.Contains("USB#VID_046D&PID_0809"))
                                 {
                                     this.msg.SetInputSourceToDefault();
                                 }
@@ -212,7 +248,7 @@
 
             IPAddress localAddr = GetLocalIPAddress();
 
-            this.listener = new TcpListener(IPAddress.Any, 11000);
+            this.listener = new TcpListener(localAddr, this.listenerPort);
 
             this.serverRunning = true;
 
@@ -315,7 +351,7 @@
 
                 this.msg.UpdateContextMenu(this.trayMenu);
 
-               // this.trayMenu.MenuItems["Volume Up"].Text = "Volume Up (" + this.msg.GetVolume() + ")";
+                // this.trayMenu.MenuItems["Volume Up"].Text = "Volume Up (" + this.msg.GetVolume() + ")";
             }
             finally
             {

@@ -10,16 +10,16 @@
 
         private static Mutex mutexComPort = new Mutex();
 
-        public LocalSerialPort()
+        public LocalSerialPort(string serialPort)
         {
-            this.comPort = new SerialPort("COM1")
+            this.comPort = new SerialPort(serialPort)
             {
                 BaudRate = 9600,
                 DataBits = 8,
                 Parity = Parity.None,
                 StopBits = StopBits.One,
                 Handshake = Handshake.None,
-                ReadTimeout = 100
+                ReadTimeout = 2000
             };
         }
 
@@ -33,7 +33,7 @@
 
                 this.comPort.Write(msgData, 0, msgData.Length);
 
-                Thread.Sleep(1000);
+                Thread.Sleep(2000);
 
                 if (this.comPort.BytesToRead > 0)
                 {
